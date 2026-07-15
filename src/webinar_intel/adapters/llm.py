@@ -26,6 +26,8 @@ Each line is prefixed with its [H:MM:SS] timestamp in the video.
 
 Return a JSON object with exactly these keys (all values are lists of strings unless noted):
 - overview: string, 2-3 sentences describing what the webinar was
+- speakers: one entry per speaker, formatted exactly as "Name — Title, Company"
+  (use what they say when introducing themselves; if title or company is unknown, omit that part)
 - coverage: 5-8 bullets summarizing what was covered
 - direct_mentions: quotes where a competitor is named directly
 - indirect_mentions: veiled references ("legacy vendors", "point solutions", etc.) with your interpretation of who they mean and why

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 from urllib.parse import parse_qs, urlparse
+from urllib.request import urlopen
 
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.proxies import WebshareProxyConfig
@@ -39,16 +41,30 @@ def _api() -> YouTubeTranscriptApi:
     return YouTubeTranscriptApi()
 
 
+def _oembed(video_id: str) -> dict:
+    """Fetch title/channel via YouTube oEmbed (no API key needed)."""
+    oembed_url = (
+        "https://www.youtube.com/oembed?url="
+        f"https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D{video_id}&format=json"
+    )
+    try:
+        with urlopen(oembed_url, timeout=10) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return {}
+
+
 def fetch_transcript(url: str) -> Transcript:
     video_id = extract_video_id(url)
     fetched = _api().fetch(video_id)
     segments = [
         TranscriptSegment(start_seconds=snippet.start, text=snippet.text) for snippet in fetched
     ]
+    meta = _oembed(video_id)
     metadata = VideoMetadata(
         video_id=video_id,
-        title="",
-        channel="",
+        title=meta.get("title", ""),
+        channel=meta.get("author_name", ""),
         url=f"https://www.youtube.com/watch?v={video_id}",
     )
     return Transcript(metadata=metadata, segments=segments)

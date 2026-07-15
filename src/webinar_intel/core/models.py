@@ -48,6 +48,7 @@ class Profile(BaseModel):
 class Brief(BaseModel):
     metadata: VideoMetadata
     overview: str
+    speakers: list[str] = Field(default_factory=list)
     coverage: list[str]
     direct_mentions: list[str]
     indirect_mentions: list[str]

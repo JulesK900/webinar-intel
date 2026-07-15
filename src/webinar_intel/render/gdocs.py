@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/documents"]
 
-BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+INLINE_RE = re.compile(r"\*\*(?P<bold>.+?)\*\*|\[(?P<ltext>[^\]]+)\]\((?P<lurl>[^)]+)\)")
 
 
 def _client():
@@ -20,11 +20,11 @@ def _client():
     return build("docs", "v1", credentials=creds, cache_discovery=False)
 
 
-def _parse_blocks(markdown: str) -> list[tuple[str, str, list[tuple[int, int]]]]:
-    """Parse markdown into (kind, plain_text, bold_ranges) blocks.
+def _parse_blocks(markdown: str) -> list[tuple[str, str, list[tuple[int, int]], list[tuple[int, int, str]]]]:
+    """Parse markdown into (kind, plain_text, bold_ranges, link_ranges) blocks.
 
-    kind is one of: h1, h2, bullet, p. Bold ranges are (start, end) offsets
-    into plain_text after stripping ** markers.
+    kind is one of: h1, h2, bullet, p. Ranges are offsets into plain_text
+    after stripping ** and []() markers. Link ranges carry the URL.
     """
     blocks = []
     for raw in markdown.splitlines():
@@ -41,28 +41,34 @@ def _parse_blocks(markdown: str) -> list[tuple[str, str, list[tuple[int, int]]]]
             kind, text = "p", line
         plain = ""
         bolds: list[tuple[int, int]] = []
+        links: list[tuple[int, int, str]] = []
         pos = 0
-        for m in BOLD_RE.finditer(text):
+        for m in INLINE_RE.finditer(text):
             plain += text[pos : m.start()]
             start = len(plain)
-            plain += m.group(1)
-            bolds.append((start, len(plain)))
+            if m.group("bold") is not None:
+                plain += m.group("bold")
+                bolds.append((start, len(plain)))
+            else:
+                plain += m.group("ltext")
+                links.append((start, len(plain), m.group("lurl")))
             pos = m.end()
         plain += text[pos:]
-        blocks.append((kind, plain, bolds))
+        blocks.append((kind, plain, bolds, links))
     return blocks
 
 
 def _build_requests(
-    blocks: list[tuple[str, str, list[tuple[int, int]]]], start: int = 1
+    blocks: list[tuple[str, str, list[tuple[int, int]], list[tuple[int, int, str]]]],
+    start: int = 1,
 ) -> list[dict]:
     """Build Docs API batchUpdate requests: one insertText + styling."""
     text = ""
     metas = []
-    for kind, plain, bolds in blocks:
+    for kind, plain, bolds, links in blocks:
         s = start + len(text)
         text += plain + "\n"
-        metas.append((kind, s, start + len(text), bolds))
+        metas.append((kind, s, start + len(text), bolds, links))
     if not metas:
         return []
 
@@ -89,7 +95,7 @@ def _build_requests(
 
     i = 0
     while i < len(metas):
-        kind, s, e, bolds = metas[i]
+        kind, s, e, bolds, links = metas[i]
         if kind in ("h1", "h2"):
             style = "HEADING_1" if kind == "h1" else "HEADING_2"
             requests.append(
@@ -114,15 +120,29 @@ def _build_requests(
                 }
             )
             for k in range(i, j + 1):
-                _, bs_start, _, k_bolds = metas[k]
+                _, ks, _, k_bolds, k_links = metas[k]
                 for b0, b1 in k_bolds:
-                    requests.append(_bold(bs_start + b0, bs_start + b1))
+                    requests.append(_bold(ks + b0, ks + b1))
+                for l0, l1, url in k_links:
+                    requests.append(_link(ks + l0, ks + l1, url))
             i = j + 1
             continue
         for b0, b1 in bolds:
             requests.append(_bold(s + b0, s + b1))
+        for l0, l1, url in links:
+            requests.append(_link(s + l0, s + l1, url))
         i += 1
     return requests
+
+
+def _link(start: int, end: int, url: str) -> dict:
+    return {
+        "updateTextStyle": {
+            "range": {"startIndex": start, "endIndex": end},
+            "textStyle": {"link": {"url": url}},
+            "fields": "link",
+        }
+    }
 
 
 def _bold(start: int, end: int) -> dict:

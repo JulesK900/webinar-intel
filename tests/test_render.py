@@ -11,8 +11,9 @@ def _brief() -> Brief:
             url="https://www.youtube.com/watch?v=abc12345678",
         ),
         overview="A Zenity webinar on agentic AI security.",
+        speakers=["Karen Katz — Director AI Security, Zenity"],
         coverage=["Point A", "Point B"],
-        direct_mentions=["'CyberArk' at 12:30"],
+        direct_mentions=["[12:30] 'CyberArk mentioned by name'"],
         indirect_mentions=["'legacy vault vendors' likely refers to Entro/SailPoint"],
         touched_our_territory=["Discussed agent identity governance"],
         contradicted_us=[],
@@ -39,3 +40,15 @@ def test_render_contains_all_sections():
 def test_render_handles_empty_section():
     out = render(_brief())
     assert "_None._" in out
+
+
+def test_render_linkifies_timestamps():
+    out = render(_brief())
+    assert "[12:30](https://www.youtube.com/watch?v=abc12345678&t=750s)" in out
+
+
+def test_render_speakers_with_linkedin():
+    out = render(_brief())
+    assert "## Speakers" in out
+    assert "linkedin.com/search/results/people" in out
+    assert "Karen+Katz" in out
