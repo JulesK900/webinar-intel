@@ -28,6 +28,17 @@ class Transcript(BaseModel):
     def full_text(self) -> str:
         return "\n".join(seg.text for seg in self.segments)
 
+    @property
+    def timestamped_text(self) -> str:
+        lines = []
+        for seg in self.segments:
+            total = int(seg.start_seconds)
+            h, rem = divmod(total, 3600)
+            m, s = divmod(rem, 60)
+            stamp = f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+            lines.append(f"[{stamp}] {seg.text}")
+        return "\n".join(lines)
+
 
 class Profile(BaseModel):
     name: str
