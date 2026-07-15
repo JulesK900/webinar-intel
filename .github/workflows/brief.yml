@@ -28,6 +28,8 @@ jobs:
       - name: Generate brief
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          BRIEF_DOC_ID: ${{ secrets.BRIEF_DOC_ID }}
         run: |
           webinar-intel brief "${{ inputs.url }}" --competitor "${{ inputs.competitor }}"
       - name: Commit brief

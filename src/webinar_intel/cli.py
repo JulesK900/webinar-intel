@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from dotenv import load_dotenv
 from webinar_intel.adapters import llm, youtube
 from webinar_intel.core.models import Profile
 from webinar_intel.render.markdown import render
+from webinar_intel.render import gdocs
 
 
 app = typer.Typer(add_completion=False, help="Analyze competitor webinars from YouTube.")
@@ -38,8 +40,17 @@ def brief(
     out_dir.mkdir(parents=True, exist_ok=True)
     slug = _slug(result.metadata.title or result.metadata.video_id)
     out_path = out_dir / f"{competitor}-{slug}.md"
-    out_path.write_text(render(result))
+    body = render(result)
+    out_path.write_text(body)
     typer.echo(f"Wrote {out_path}")
+
+    doc_id = os.environ.get("BRIEF_DOC_ID")
+    if doc_id and os.environ.get("GOOGLE_SA_JSON"):
+        title = result.metadata.title or result.metadata.video_id
+        gdocs.append_brief(doc_id, title, result.metadata.url, body)
+        typer.echo(f"Appended to Google Doc {doc_id}")
+    else:
+        typer.echo("Skipped Google Doc append (BRIEF_DOC_ID or GOOGLE_SA_JSON not set)")
 
 
 def _load_profile(path: Path, name: str) -> Profile:
