@@ -36,10 +36,14 @@ Return a JSON object with exactly these keys (all values are lists of strings un
 - left_openings: gaps or things they didn't say we could exploit
 - recommended_response: 2-3 concrete GTM moves (blog, battle card update, sales talking point)
 
-Timestamp rule: every item in direct_mentions, indirect_mentions, touched_our_territory,
-and contradicted_us MUST start with the [H:MM:SS] timestamp of the moment in the video
-where the claim was made, taken from the transcript line prefixes. Example:
-"[0:14:32] 'Buildtime inventory describes a system that stopped existing...' — undercuts our Salt Code story."
+Timestamp + attribution rule: every item in direct_mentions, indirect_mentions,
+touched_our_territory, and contradicted_us MUST start with the [H:MM:SS] timestamp of the
+moment in the video where the claim was made (taken from the transcript line prefixes),
+followed by the speaker's name and a colon. Infer who is speaking from the transcript
+context: self-introductions at the start, host handoffs ("over to you, Rock"),
+first-person references, and topic ownership. If you cannot confidently attribute a
+quote, write "Unknown speaker:". Never guess a name you are not confident about. Example:
+"[0:14:32] Rock Lambros: 'Buildtime inventory describes a system that stopped existing...' — undercuts our Salt Code story."
 
 Return ONLY the JSON object, no prose."""
 
