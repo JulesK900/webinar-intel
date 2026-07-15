@@ -1,31 +1,33 @@
-# Us — Entro Security (Non-Human Identity Security)
+# Us — Salt Security (API Security)
 
 ## Who we are
 
-Entro secures non-human identities (NHIs) — secrets, API keys, service accounts, OAuth tokens, and AI agent credentials — across the full lifecycle: discovery, posture, detection, and response. Acquired by SailPoint in June 2026, bringing NHI security into the broader IAM fabric.
+Salt Security is the pioneer of the API security category. We protect the APIs at the heart of every modern application — discovering every API across environments, detecting attacks in runtime, and hardening the design of APIs before they ship. Our patented behavioral engine and cloud-scale big data platform learn what "normal" looks like for every API and surface abuse, abuse-of-function, and business-logic attacks that legacy tools miss.
 
 ## Pillars
 
-- **Discovery** — inventory every NHI across code, cloud, SaaS, and vaults.
-- **Identity enrichment** — map every secret to owner, permissions, usage, and blast radius.
-- **AIDR (AI Detection & Response)** — runtime detection of NHI abuse, including AI agent misuse.
-- **Governance** — lifecycle policy, rotation, and least privilege for NHIs.
+- **Discovery** — continuous, agentless inventory of every API (external, internal, partner, shadow, zombie) with full context.
+- **Posture governance** — API security posture management: sensitive data exposure, spec drift, OWASP API Top 10, compliance.
+- **Runtime protection** — behavioral, ML-driven detection of API attacks and abuse; correlate low-and-slow reconnaissance into a single incident.
+- **Shift-left / API design** — feed runtime insights back into dev to harden APIs before they ship.
 
 ## Differentiators
 
-- Deep secret scanning across code + cloud + SaaS, not just one plane.
-- Identity-first framing (ownership, blast radius) vs. vault-first or vulnerability-first.
-- SailPoint IAM fabric integration — NHIs sit alongside human identities in one governance model.
-- AI agent identity coverage as a first-class citizen, not a bolt-on.
+- Category creator — largest, longest-running dataset of real-world API attacks feeding the ML model.
+- Big data + behavioral ML architecture — designed for API traffic scale, not repurposed WAF/RASP.
+- Cloud-native, agentless deployment across AWS, Azure, GCP, on-prem, and hybrid.
+- Full lifecycle coverage in one platform: discovery, posture, runtime, remediation.
+- Rich integrations with the security stack (SIEM, SOAR, WAF, API gateways, CI/CD).
 
 ## Sore spots / where competitors love to attack
 
-- Younger category presence than legacy PAM/vault players.
-- Smaller install base than horizontal CSPM vendors.
-- SailPoint acquisition is recent — integration story is still maturing.
+- Enterprise price point vs. lighter-weight scanners.
+- "Legacy first-mover" framing from newer AI-native entrants.
+- AI agent / LLM API coverage is emerging — competitors will lean here.
 
 ## Positioning language we use
 
-- "Every non-human identity, secured."
-- "Discovery. Posture. Detection. Response."
+- "Secure every API."
+- "Discover. Posture. Protect."
+- "The API security platform for the AI era."
 - Sentence case, no em-dashes, avoid "unlock" and "solutions".
