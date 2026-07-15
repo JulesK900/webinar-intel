@@ -17,7 +17,9 @@ app = typer.Typer(add_completion=False, help="Analyze competitor webinars from Y
 @app.command()
 def brief(
     url: str = typer.Argument(..., help="YouTube URL or video ID"),
-    competitor: str = typer.Option(..., "--competitor", "-c", help="Competitor profile slug (matches profiles/<slug>.md)"),
+    competitor: str = typer.Option(
+        ..., "--competitor", "-c", help="Competitor profile slug (matches profiles/<slug>.md)"
+    ),
     profiles_dir: Path = typer.Option(Path("profiles"), "--profiles-dir"),
     out_dir: Path = typer.Option(Path("briefs"), "--out-dir"),
 ) -> None:

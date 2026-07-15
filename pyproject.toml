@@ -3,15 +3,15 @@ name = "webinar-intel"
 version = "0.1.0"
 description = "URL-in, competitive-brief-out: analyze competitor webinars on YouTube with a PMM lens"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Julien Katzenmaier" }]
 dependencies = [
-    "anthropic>=0.40.0",
-    "youtube-transcript-api>=0.6.2",
-    "pydantic>=2.9.0",
-    "typer>=0.12.5",
-    "python-dotenv>=1.0.1",
+  "anthropic>=0.40.0",
+  "youtube-transcript-api>=0.6.2",
+  "pydantic>=2.9.0",
+  "typer>=0.12.5",
+  "python-dotenv>=1.0.1",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +29,7 @@ packages = ["src/webinar_intel"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py39"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

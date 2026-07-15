@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -13,8 +15,8 @@ class VideoMetadata(BaseModel):
     video_id: str
     title: str
     channel: str
-    published_at: date | None = None
-    duration_seconds: int | None = None
+    published_at: Optional[date] = None
+    duration_seconds: Optional[int] = None
     url: str
 
 

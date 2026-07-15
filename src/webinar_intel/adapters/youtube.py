@@ -29,10 +29,9 @@ def extract_video_id(url: str) -> str:
 
 def fetch_transcript(url: str) -> Transcript:
     video_id = extract_video_id(url)
-    raw = YouTubeTranscriptApi.get_transcript(video_id)
+    fetched = YouTubeTranscriptApi().fetch(video_id)
     segments = [
-        TranscriptSegment(start_seconds=item["start"], text=item["text"])
-        for item in raw
+        TranscriptSegment(start_seconds=snippet.start, text=snippet.text) for snippet in fetched
     ]
     metadata = VideoMetadata(
         video_id=video_id,
