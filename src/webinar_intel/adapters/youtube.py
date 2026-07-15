@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import re
 from urllib.parse import parse_qs, urlparse
 
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
 
 from webinar_intel.core.models import Transcript, TranscriptSegment, VideoMetadata
 
@@ -27,9 +29,19 @@ def extract_video_id(url: str) -> str:
     raise ValueError(f"Could not extract YouTube video ID from: {url}")
 
 
+def _api() -> YouTubeTranscriptApi:
+    user = os.environ.get("WEBSHARE_PROXY_USERNAME")
+    password = os.environ.get("WEBSHARE_PROXY_PASSWORD")
+    if user and password:
+        return YouTubeTranscriptApi(
+            proxy_config=WebshareProxyConfig(proxy_username=user, proxy_password=password)
+        )
+    return YouTubeTranscriptApi()
+
+
 def fetch_transcript(url: str) -> Transcript:
     video_id = extract_video_id(url)
-    fetched = YouTubeTranscriptApi().fetch(video_id)
+    fetched = _api().fetch(video_id)
     segments = [
         TranscriptSegment(start_seconds=snippet.start, text=snippet.text) for snippet in fetched
     ]
