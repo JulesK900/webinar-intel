@@ -4,57 +4,53 @@
 - **URL:** https://www.youtube.com/watch?v=jK1Z7Z6zlW0
 
 ## Overview
-This was a Zenity-hosted webinar launching the second version of the OWASP 'State of Agentic AI' report, co-presented by Karen Katz (Zenity), Rock Lambros (Zenity, OWASP), Ariel (Pillar Security), and Evgeniy (Hive Trace). The panel walked through updates to the agent taxonomy, threat analysis, MCP/protocol landscape, AI-BOM, regulatory landscape, and a new enterprise adoption maturity model.
+A Zenity-hosted webinar featuring Karen Katz (Zenity) alongside OWASP GenAI Security Project contributors Rock Lambros, Ariel (Pillar Security), and Evgeniy Kokuykin (Raft/ITMO) unveiling the second version of the OWASP 'State of Agentic AI Security and Governance' report. The discussion covered updated agent taxonomy, threat analysis, MCP/protocol landscape, AI-SBOM, regulatory shifts, and an enterprise adoption maturity model.
 
 ## What was covered
-- Why a v2 was needed: threats moved from forecast to documented CVEs and real incidents (coding agents wiping prod DBs, zero-click Copilot data exfiltration)
-- Updated agent taxonomy with new axes: agent type/domain, build method (framework vs. no/low-code), composition (single vs. multi-agent), and autonomy level as a cross-cutting risk dimension
-- Threat analysis reframing prompt injection as a delivery mechanism (TTP) rather than a vulnerability, appearing across 6 of 10 categories
-- Supply chain elevated as the fastest-moving attack surface: MCP servers, skill registries, plugin marketplaces, tool descriptions, and memory poisoning (Postmark MCP incident cited)
-- AI-BOM discussion pivoting from buildtime component lists to runtime behavior descriptions, since agents assemble dependencies dynamically
-- Regulatory update: 42 instruments across 10 jurisdictions, EU AI Act Article 72 'drift detection', DORA/NIS2/NY/CA incident clocks, EU strict no-fault product liability, CISA BOD, US executive orders
-- New Enterprise Adoption Maturity Model mapping adoption tiers (Shadow AI → citizen dev → in-house agents → multi-agent → federated) against governance maturity
-- Repeated emphasis that Shadow AI discovery is Tier 0 and the required starting point before any governance can happen
+- Introduction of the 2026 v2 report as a full rebuild grounded in documented incidents/CVEs rather than last year's forecasts
+- Revised agent taxonomy with new axes: agent type/domain, build method (framework vs. low-code/no-code), composition (single vs. multi-agent), and cross-cutting autonomy level
+- Key trends: safety-security convergence, non-human/agent identities, regulatory landscape, and explainability challenges
+- Threat analysis reframing prompt injection as a delivery mechanism/TTP rather than a standalone vulnerability, plus supply chain as fastest-moving attack surface (Postmark MCP incident referenced)
+- MCP protocol adoption explosion vs. slower A2A adoption; pointer to OWASP MCP cheat sheet
+- AI-SBOM discussion led by Helen Oakley's work — extending SBOM to model lineage and runtime-assembled dependency graphs
+- Deep dive on regulation: EU AI Act Article 72 (implicit drift detection), DORA 4-hour clock, NIS2, US executive orders, CISA BOD, and shift to EU no-fault product liability
+- New Enterprise Adoption Maturity Model mapping tiers (shadow AI → citizen developer → in-house → multi-agent → federated) against governance maturity
 
 ## Direct competitor mentions
-- No direct mention of Salt Security or any named API security competitor throughout the webinar
-- Postmark MCP named as the marquee supply-chain incident example
-- OWASP GenAI Security Project, LLM Top 10 (Steve Wilson co-lead), Helen Oakley's AI-BOM initiative referenced as aligned OWASP work
-- Anthropic and Linux Foundation credited for MCP standardization
+_None._
 
 ## Indirect mentions
-- Rock: 'treating [prompt injection] as a checkbox that you can solve... you're just going to waste time' — veiled swipe at prompt-firewall and content-moderation-only vendors
-- Ariel: buildtime SBOMs 'describe a system that stopped existing the moment the agent ran' — indirect knock on static/shift-left-only API and AppSec tools, which could be aimed at Salt's traditional runtime-observed model as well as APIsec/42Crunch
-- Rock on supply chain: 'attackers stopped attacking the agent and started poisoning what the agent trusts' — reframes the action layer (Salt's turf) as downstream/less important than the trust graph Zenity governs
-- Repeated 'blast radius' language tied to autonomy and composition — implicit positioning that governance at the agent/platform layer is the correct control point vs. traffic/API-layer defense
-- 'Shadow AI' as Tier 0 discovery gap — implicitly reframes discovery around agents/copilots (Zenity's turf) rather than shadow APIs/MCP endpoints (Salt's turf)
+- [0:28:25] 'Everyone calls prompt injection the vulnerability and it's not... it's the delivery mechanism' — reframes traditional API/WAF signature or prompt-filter vendors as missing the point; positions Zenity's behavioral/intent model as the correct lens.
+- [0:29:22] 'Attackers stopped attacking the agent and started poisoning what the agent trusts' — implicit swipe at traffic/API-layer defenders (like Salt) by suggesting the real battlefield is tool descriptions, memory, and dependencies inside the agent runtime.
+- [0:37:01] 'Traditional SBOM is a buildtime list. Agents don't work that way... your buildtime inventory describes a system that stopped existing the moment the agent ran' — undercuts shift-left/pre-production governance narratives, which is exactly where Salt Code plays.
+- [0:42:44] 'No regulator actually wrote the words do drift detection, but how are you going to start your 4-hour clock on something that makes automated decisions... leveraging a deterministic detection mechanism it's going to be really difficult' — veiled dismissal of deterministic/rule-based detection (implying Salt-style behavioral baselining alone is insufficient without agent-intent context).
+- [0:53:44] 'The very first thing that needs to be taken into consideration really is a discovery phase' — positions Zenity's Observe pillar as the entry point, implicitly reframing API discovery vendors as downstream.
 
 ## Where they touched our territory
-- MCP discovery and governance — Zenity claiming the discovery narrative around MCP servers, which is core to Salt's Unified Agentic Discovery pillar
-- Supply chain / rogue MCP detection — Postmark MCP example lands squarely in territory Salt claims via Illuminate and AG-SPM
-- Drift detection tied to EU AI Act Article 72 — overlaps directly with Salt's AG-SPM compliance governance positioning
-- Runtime behavioral analysis and 'blast radius' framing — overlaps with Salt's AG-DR behavioral threat protection
-- Incident reporting clocks (DORA 4hr, NIS2 24hr) requiring continuous oversight — a natural Salt wedge for API/agent runtime evidence, but Zenity is claiming the narrative
-- Shadow discovery as the mandatory first step — Salt says this about shadow/zombie APIs; Zenity is repositioning it around shadow AI/agents
+- [0:14:06] 'We've seen a coding agent wiping production databases... emails that have walked out confidential data out of a copilot with zero clicks' — action-layer damage examples that are exactly Salt's runtime/API-fabric turf, yet framed as agent-behavior problems.
+- [0:29:57] 'Agentic adoption... has just created a huge target not just on the agents themselves but also on the infrastructure that supports them' — acknowledges infrastructure/API layer risk, our home ground.
+- [0:30:51] 'MCP, new threat models associated with MCPs... skill registries... plugins for coding agents... new supply chains being quickly adopted and are not necessarily being scrutinized' — overlaps directly with Salt's Unified Agentic Discovery and rogue MCP detection.
+- [0:34:52] 'The most notable incident on MCP... postmark MCP... new version came with only one line added, blind copy to the attacker email' — supply-chain MCP compromise story that Salt's discovery + behavioral runtime is designed to catch.
+- [0:38:39] 'Companies... don't even know what MCPs are in use... who are the agents that using them' — Karen explicitly names the discovery gap Salt's Illuminate/AG-SPM solves at the API fabric layer.
+- [0:44:11] 'Article 72 quietly demands drift detection without using the words' — API drift and posture drift is a core AG-SPM pillar for Salt.
+- [0:53:37] 'A lot of people... admit that within their organizations they have a lot of shadow AI being deployed... the very first thing... is a discovery phase' — mirrors Salt's shadow/zombie API and rogue MCP discovery story.
 
 ## Where they contradicted us
-- Framing prompt injection and agent trust-graph poisoning as THE dominant threat surface implicitly downgrades API-layer/business-logic abuse (Salt's core AG-DR value prop)
-- Ariel's claim that buildtime inventories 'describe a system that stopped existing' undercuts any static or pre-runtime API inventory narrative and pressures Salt Code's shift-left story
-- The maturity model positions governance maturity around agent composition and autonomy — not around API attack surface — implicitly making Salt's API-centric maturity narrative feel orthogonal or incomplete
-- Rock's point that 'top 5 CVEs are all semi-autonomous frameworks, not fully autonomous' subtly argues risk lives in framework/platform config (Zenity turf) rather than at the action layer
-- Regulatory framing centers on agent oversight and drift, not on API governance — a land grab on the compliance narrative Salt uses for AG-SPM
+- [0:37:01] 'Traditional SBOM is a buildtime list... your buildtime inventory describes a system that stopped existing the moment the agent ran' — directly challenges the value of Salt Code's pre-production/shift-left governance narrative.
+- [0:39:09] 'AI-SBOMs are relatively immature... the actual standards, be it CycloneDX or SPDX, don't quite reflect the needs... a modification from just describing the components to actually describing the behavior' — positions behavior-first (Zenity's turf) as superior to component/API inventory (our discovery framing).
+- [0:28:41] 'Injection showing up in six out of the 10 categories... treating it as a checkbox that you can solve, you're just going to waste time... figure out how to contain the blast radius' — implicitly dismisses signature/pattern-based API defenses in favor of blast-radius containment at the agent layer.
+- [0:42:57] 'How are you going to start your 4-hour clock on something that makes automated decisions... leveraging a deterministic detection mechanism it's going to be really difficult' — undermines deterministic API monitoring as insufficient for regulatory incident clocks.
 
 ## Where they left an opening
-- Zero discussion of the API/action layer where agent intent becomes damage — no mention of business logic abuse, east-west API traffic, or downstream enterprise APIs
-- No mention of platform-agnostic frameworks like LangChain, CrewAI, or Databricks — confirms Zenity's SaaS-platform-bound coverage gap
-- AI-BOM discussion admitted current standards (CycloneDX, SPDX) can't describe agentic behavior — Salt can position the Agentic Security Graph as the missing runtime grammar
-- Ariel explicitly said Shadow AI is 'completely ungoverned' and discovery must come first — but Zenity's discovery is platform-bound; Salt's agentless, out-of-band discovery of shadow APIs and rogue MCPs is a direct counter
-- The Postmark MCP example was framed as a supply-chain problem but no answer was given for how to detect the malicious BCC behavior at runtime on the API/traffic side — Salt's behavioral runtime story fits exactly here
-- Regulatory 4-hour incident clocks discussed with no answer for how you actually produce forensic evidence — Salt's audit/replay and API-level telemetry is a natural fill
-- No mention of inline enforcement, rate limiting, or blocking — both vendors share this gap, but Salt's integrations with WAFs/gateways/CrowdStrike/Wiz give a stronger enforcement story
-- Multi-agent and federated agentic systems admitted as 'not there yet' — Salt can claim readiness via the Agentic Security Graph before Zenity's model matures
+- No mention of east-west or internal API traffic — Zenity's model still stops at the SaaS/platform boundary; Salt can own 'what happens after the agent calls the API.'
+- No answer for heterogeneous/custom agent frameworks (LangChain, CrewAI, Databricks) — panel talked exclusively about MCP, Copilot-adjacent supply chains, and OWASP taxonomy without naming coverage for custom stacks.
+- AI-SBOM discussion admitted the standards don't yet describe runtime behavior — Salt's Agentic Security Graph (LLM→MCP→API correlation) is exactly the runtime-behavior grammar they say is missing.
+- Regulatory incident clocks (DORA 4-hour, NIS2 24-hour) were flagged as hard without continuous oversight — Salt's cloud-scale behavioral baselining and 96% alert reduction is a direct answer; Zenity offered no concrete detection mechanism.
+- Postmark MCP incident was cited but no product answer was given for how Zenity would have detected the malicious BCC line at the network/API layer — Salt's out-of-band traffic analysis would.
+- Shadow AI discovery was named as 'step zero' but Zenity's model requires platform connectors/device agents; Salt's agentless, out-of-band discovery is a cleaner story to lead with.
+- No customer proof points, no metrics, no named enterprise deployments — the entire session was OWASP-flavored thought leadership with zero competitive proof.
 
 ## Recommended response
-- Publish a Salt Labs blog titled 'Intent Is Not Impact: Why the Postmark MCP Incident Proves You Need Action-Layer Defense' — walk through the Postmark case and show how behavioral API baselining catches the malicious BCC exfil that agent-layer governance misses, directly rebutting Zenity's supply-chain framing
-- Update the Zenity battle card with three new objection handlers: (1) 'Agent maturity model is platform-bound — ask them how they cover LangChain/CrewAI/Databricks and shadow MCPs created outside monitored SaaS'; (2) 'Their AI-BOM story admits buildtime inventories are dead — Salt's Agentic Security Graph is the runtime grammar they said doesn't exist yet'; (3) 'Ask how they produce a 4-hour DORA incident report without API-layer telemetry'
-- Arm the field with a talk track anchored on EU AI Act Article 72 drift detection and DORA/NIS2 incident clocks: position AG-SPM + AG-DR as the only way to produce continuous oversight evidence at the action layer, and pair it with a co-sell motion for Microsoft-heavy accounts where Zenity covers Copilot and Salt covers everything the agents actually call
+- Publish a Salt Labs blog titled 'From Buildtime to Runtime to Action-Time: Why Agentic SBOMs Must Include the API Fabric' — directly rebut Rock Lambros's claim that buildtime inventories are obsolete by showing how Salt Code + Illuminate + AG-DR produce a continuously reconstructed runtime dependency graph (Agentic Security Graph) that Zenity's platform-bound Observe cannot.
+- Update the Zenity battle card with a new 'Regulatory Clock' section: map DORA 4-hour, NIS2 24-hour, EU AI Act Article 72 drift-detection to Salt's AG-SPM continuous posture + behavioral baselining, and call out that Zenity offered no deterministic detection mechanism on-record — pair with the Postmark MCP incident as a concrete 'Salt would have caught the BCC exfiltration at the API layer' talk track.
+- Arm AEs with a 'Shadow AI Discovery Bake-off' one-pager: lead every Zenity-competitive deal with a free Illuminate scan showing shadow APIs, rogue MCP servers, and non-Microsoft agent frameworks (LangChain/CrewAI/Databricks) that Zenity's connector-and-device-agent model structurally cannot see — turning their own 'step zero is discovery' quote against them.
