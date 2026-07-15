@@ -24,7 +24,7 @@ def render(brief: Brief) -> str:
     if brief.speakers:
         parts.append("## Speakers")
         for speaker in brief.speakers:
-            parts.append(f"- {speaker} ([LinkedIn]({_linkedin_search(speaker)}))")
+            parts.append(f"- {speaker} ([search]({_speaker_search(speaker)}))")
         parts.append("")
     _bullets(parts, "What was covered", brief.coverage)
     _bullets(parts, "Direct competitor mentions", brief.direct_mentions, m.url)
@@ -46,11 +46,13 @@ def _bullets(parts: list[str], heading: str, items: list[str], video_url: str = 
     parts.append("")
 
 
-def _linkedin_search(speaker: str) -> str:
-    """Deterministic LinkedIn people-search link (profile URLs can't be known reliably)."""
-    keywords = speaker.replace("\u2014", " ").replace(",", " ")
+def _speaker_search(speaker: str) -> str:
+    """Google search link for the speaker (more reliable than a LinkedIn people-search)."""
+    # Drop parentheticals and collapse to 'Name Title Company' for a cleaner query.
+    keywords = re.sub(r"\([^)]*\)", "", speaker)
+    keywords = keywords.replace("\u2014", " ").replace(",", " ")
     keywords = re.sub(r"\s+", " ", keywords).strip()
-    return f"https://www.linkedin.com/search/results/people/?keywords={quote_plus(keywords)}"
+    return f"https://www.google.com/search?q={quote_plus(keywords + ' linkedin')}"
 
 
 def _linkify_timestamp(item: str, video_url: str) -> str:
@@ -67,4 +69,4 @@ def _linkify_timestamp(item: str, video_url: str) -> str:
     seconds = h * 3600 + mm * 60 + ss
     stamp = m.group(0)[1:-1]
     sep = "&" if "?" in video_url else "?"
-    return f"[{stamp}]({video_url}{sep}t={seconds}s){item[m.end():]}"
+    return f"[{stamp}]({video_url}{sep}t={seconds}s){item[m.end() :]}"

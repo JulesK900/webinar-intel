@@ -47,8 +47,9 @@ def test_render_linkifies_timestamps():
     assert "[12:30](https://www.youtube.com/watch?v=abc12345678&t=750s)" in out
 
 
-def test_render_speakers_with_linkedin():
+def test_render_speakers_with_search_link():
     out = render(_brief())
     assert "## Speakers" in out
-    assert "linkedin.com/search/results/people" in out
+    assert "google.com/search?q=" in out
     assert "Karen+Katz" in out
+    assert "linkedin" in out

@@ -20,7 +20,9 @@ def _client():
     return build("docs", "v1", credentials=creds, cache_discovery=False)
 
 
-def _parse_blocks(markdown: str) -> list[tuple[str, str, list[tuple[int, int]], list[tuple[int, int, str]]]]:
+def _parse_blocks(
+    markdown: str,
+) -> list[tuple[str, str, list[tuple[int, int]], list[tuple[int, int, str]]]]:
     """Parse markdown into (kind, plain_text, bold_ranges, link_ranges) blocks.
 
     kind is one of: h1, h2, bullet, p. Ranges are offsets into plain_text
