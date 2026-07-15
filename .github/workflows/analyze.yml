@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - "transcripts/**"
+  workflow_dispatch:
+    inputs:
+      transcript:
+        description: "Transcript file to re-analyze (blank = all)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -26,10 +32,18 @@ jobs:
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           BRIEF_DOC_ID: ${{ secrets.BRIEF_DOC_ID }}
         run: |
-          changed=$(git diff --name-only HEAD^ HEAD -- transcripts/ \
-            | grep '\.json$' || true)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.transcript }}" ]; then
+              changed="${{ inputs.transcript }}"
+            else
+              changed=$(ls transcripts/*.json 2>/dev/null || true)
+            fi
+          else
+            changed=$(git diff --name-only HEAD^ HEAD -- transcripts/ \
+              | grep '\.json$' || true)
+          fi
           if [ -z "$changed" ]; then
-            echo "No new transcripts in this push."
+            echo "No transcripts to analyze."
             exit 0
           fi
           for f in $changed; do
