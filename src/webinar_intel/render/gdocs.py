@@ -26,9 +26,5 @@ def append_brief(doc_id: str, title: str, url: str, body_markdown: str) -> None:
 
     docs.documents().batchUpdate(
         documentId=doc_id,
-        body={
-            "requests": [
-                {"insertText": {"location": {"index": 1}, "text": payload}}
-            ]
-        },
+        body={"requests": [{"insertText": {"location": {"index": 1}, "text": payload}}]},
     ).execute()

@@ -16,6 +16,11 @@ from webinar_intel.render import gdocs
 app = typer.Typer(add_completion=False, help="Analyze competitor webinars from YouTube.")
 
 
+@app.callback()
+def main() -> None:
+    """webinar-intel: competitor webinar analysis."""
+
+
 @app.command()
 def brief(
     url: str = typer.Argument(..., help="YouTube URL or video ID"),
