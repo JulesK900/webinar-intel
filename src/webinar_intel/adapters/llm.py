@@ -199,15 +199,32 @@ def _extract_json(text: str) -> dict:
     raise ValueError(f"Model returned non-JSON output: {text[:200]}")
 
 
+MAX_OUTPUT_TOKENS = 16384
+
+
 def _ask_json(model: str, prompt: str, max_tokens: int = 4096) -> dict:
+    """Call the model and parse a JSON object, growing the output budget on
+    truncation (stop_reason == max_tokens) instead of failing on cut-off JSON."""
     client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    resp = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    text = "".join(block.text for block in resp.content if isinstance(block, TextBlock))
-    return _extract_json(text)
+    budget = max_tokens
+    while True:
+        resp = client.messages.create(
+            model=model,
+            max_tokens=budget,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(
+            block.text for block in resp.content if isinstance(block, TextBlock)
+        )
+        if resp.stop_reason == "max_tokens" and budget < MAX_OUTPUT_TOKENS:
+            budget = min(budget * 2, MAX_OUTPUT_TOKENS)
+            continue
+        if resp.stop_reason == "max_tokens":
+            raise ValueError(
+                f"Model output still truncated at {budget} tokens; "
+                f"response starts: {text[:200]}"
+            )
+        return _extract_json(text)
 
 
 def analyze_coverage(transcript: Transcript) -> dict:
@@ -244,7 +261,7 @@ def analyze_competitive(
         candidates=candidates_text,
         attribution_rule=ATTRIBUTION_RULE,
     )
-    return _ask_json(SMART_MODEL, prompt, max_tokens=4096)
+    return _ask_json(SMART_MODEL, prompt, max_tokens=8192)
 
 
 def extract_learnings(brief: Brief, competitor: CompetitorContext) -> dict:
