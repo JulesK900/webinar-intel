@@ -64,6 +64,28 @@ def parse_patterns(markdown: str) -> list[str]:
     return unique
 
 
+def parse_corrections(markdown: str) -> list[tuple[str, str]]:
+    """Extract ASR-correction pairs: bullets shaped '- wrong => right'."""
+    pairs: list[tuple[str, str]] = []
+    for line in markdown.splitlines():
+        m = re.match(r"^\s*[-*]\s+(.+?)\s*=>\s*(.+?)\s*$", line)
+        if m:
+            pairs.append((m.group(1).strip(), m.group(2).strip()))
+    return pairs
+
+
+def load_corrections(vault_dir: Path, slug: str) -> list[tuple[str, str]]:
+    """Merge global + competitor-specific ASR corrections (both optional)."""
+    pairs: list[tuple[str, str]] = []
+    for path in (
+        vault_dir / "corrections.md",
+        vault_dir / "competitors" / slug / "corrections.md",
+    ):
+        if path.exists():
+            pairs.extend(parse_corrections(path.read_text()))
+    return pairs
+
+
 def _read(path: Path) -> str:
     if not path.exists():
         raise FileNotFoundError(f"Vault file missing: {path}")

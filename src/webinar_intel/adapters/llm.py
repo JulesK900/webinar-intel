@@ -1,14 +1,16 @@
 """LLM calls, split by job so tokens go where judgment is needed.
 
-Three calls instead of one monolith:
+Two webinar modes:
 
-1. ``analyze_coverage``  — FAST model. Overview, speakers, coverage from the
-   full transcript. Mechanical summarization; cheap tokens.
-2. ``analyze_competitive`` — SMART model. The judgment call: only the
-   detect-stage candidate windows plus focused vault files.
-3. ``extract_learnings`` — FAST model. Distills new recurring claims and
-   veiled phrasings so the vault gets smarter with every run.
+- "own" (default when the channel matches the competitor): the competitor is
+  hosting, so everything they say is signal. A FAST-model sweep extracts their
+  positioning claims, category framing, roadmap hints, and swipes; the SMART
+  model then judges those claims against our messaging.
+- "third-party": someone else is hosting and the competitor merely comes up.
+  The pure-Python keyword detect stage supplies candidate windows.
 
+Shared calls: ``analyze_coverage`` (FAST: overview/speakers/topics) and
+``extract_learnings`` (FAST: distills new talk tracks + scanner phrases).
 Model names are env-overridable so forks can pick their own price point.
 """
 
@@ -52,10 +54,74 @@ Return a JSON object with exactly these keys:
 
 Return ONLY the JSON object, no prose."""
 
-COMPETITIVE_PROMPT = """You are a senior PMM analyzing excerpts from a competitor webinar.
-A keyword scanner already extracted only the transcript moments that mention
-competitors (directly or in veiled terms) or touch our territory. Excerpts are
-separated by [...] markers; each line keeps its [H:MM:SS] timestamp.
+CLAIMS_PROMPT = """You are scanning the transcript of a webinar HOSTED BY our competitor
+{competitor}. Extract every moment where a speaker makes a claim that matters
+competitively. Keep the original [H:MM:SS] timestamps.
+
+Extract moments of these kinds:
+- positioning claims: how they describe their product, platform, or category
+- category framing: names/frameworks they push to define the market
+- roadmap or product hints: features, launches, integrations, plans
+- swipes: attacks on other vendors or approaches, direct or veiled
+  ("legacy tools", "point solutions", "traditional security", etc.)
+- proof points: customers, metrics, research, standards-body roles they cite
+
+DO NOT extract: introductions and pleasantries, housekeeping, generic industry
+education with no competitive angle, audience Q&A logistics.
+
+# Transcript
+{transcript}
+
+Return a JSON object with one key:
+- claims: list of strings, each formatted as "[H:MM:SS] Speaker: 'short verbatim
+  quote' — kind: positioning|category|roadmap|swipe|proof"
+
+Be generous: 15-40 claims for a typical hour-long webinar. Return ONLY the JSON
+object, no prose."""
+
+OWN_WEBINAR_PROMPT = """You are a senior PMM at the company described under "Us". Our competitor
+{competitor} hosted a webinar; below are the competitively relevant claims
+their speakers made (extracted from the transcript, with timestamps).
+Your job: tell our sales and marketing team what {competitor} is telling the
+market, and how it cuts against us.
+
+# Us — our messaging
+{messaging}
+
+# Us — our differentiators and known attack surfaces
+{counters}
+
+# Competitor profile
+{profile}
+
+# What we already know about their talk tracks (from past webinars and research)
+{talk_tracks}
+
+# Claims made in this webinar
+{candidates}
+
+Return a JSON object with exactly these keys (all values are lists of strings):
+- direct_mentions: their most important POSITIONING CLAIMS - how they framed
+  their product, category, and authority. Skip bare self-introductions; a
+  speaker stating their own name and employer is NOT a positioning claim.
+- indirect_mentions: SWIPES at us or other vendors, direct or veiled, with your
+  interpretation of who they mean and why
+- touched_our_territory: claims that overlap our pillars - where they are
+  competing for the same ground
+- contradicted_us: claims that undermine our positioning or architecture
+- left_openings: gaps, admissions, or things they didn't say that we can exploit
+- recommended_response: 2-3 concrete GTM moves (blog, battle card update,
+  sales talking point)
+
+{attribution_rule}
+
+Return ONLY the JSON object, no prose."""
+
+COMPETITIVE_PROMPT = """You are a senior PMM analyzing excerpts from a webinar in which our
+competitor comes up. A keyword scanner already extracted only the transcript
+moments that mention competitors (directly or in veiled terms) or touch our
+territory. Excerpts are separated by [...] markers; each line keeps its
+[H:MM:SS] timestamp.
 
 # Us — our messaging
 {messaging}
@@ -150,9 +216,27 @@ def analyze_coverage(transcript: Transcript) -> dict:
     return _ask_json(FAST_MODEL, prompt, max_tokens=2048)
 
 
-def analyze_competitive(candidates_text: str, us: UsContext, competitor: CompetitorContext) -> dict:
-    """SMART model: competitive judgment over candidate windows only."""
-    prompt = COMPETITIVE_PROMPT.format(
+def extract_claims(transcript: Transcript, competitor: CompetitorContext) -> list[str]:
+    """FAST model: sweep the competitor's own webinar for competitive claims."""
+    prompt = CLAIMS_PROMPT.format(
+        competitor=competitor.slug,
+        transcript=transcript.timestamped_text,
+    )
+    data = _ask_json(FAST_MODEL, prompt, max_tokens=4096)
+    claims = data.get("claims", [])
+    return [c for c in claims if isinstance(c, str) and c.strip()]
+
+
+def analyze_competitive(
+    candidates_text: str,
+    us: UsContext,
+    competitor: CompetitorContext,
+    mode: str = "third-party",
+) -> dict:
+    """SMART model: competitive judgment over the candidate material."""
+    template = OWN_WEBINAR_PROMPT if mode == "own" else COMPETITIVE_PROMPT
+    prompt = template.format(
+        competitor=competitor.slug,
         messaging=us.messaging,
         counters=us.counters,
         profile=competitor.profile,
@@ -192,10 +276,11 @@ def analyze(
     us: UsContext,
     competitor: CompetitorContext,
     candidates_text: str,
+    mode: str = "third-party",
 ) -> Brief:
     """Run the split pipeline and assemble the brief."""
     coverage = analyze_coverage(transcript)
     competitive = analyze_competitive(
-        candidates_text or transcript.timestamped_text, us, competitor
+        candidates_text or transcript.timestamped_text, us, competitor, mode=mode
     )
-    return Brief(metadata=transcript.metadata, **coverage, **competitive)
+    return Brief(metadata=transcript.metadata, mode=mode, **coverage, **competitive)

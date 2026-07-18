@@ -47,6 +47,9 @@ class Profile(BaseModel):
 
 class Brief(BaseModel):
     metadata: VideoMetadata
+    # "own": the competitor hosted the webinar (their claims are the signal).
+    # "third-party": someone else hosted and the competitor came up.
+    mode: str = "third-party"
     overview: str
     speakers: list[str] = Field(default_factory=list)
     coverage: list[str]

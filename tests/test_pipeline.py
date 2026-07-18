@@ -8,9 +8,14 @@ import pytest
 
 from webinar_intel.adapters.llm import _extract_json
 from webinar_intel.core.models import Brief, Transcript, TranscriptSegment, VideoMetadata
-from webinar_intel.core.vault import CompetitorContext, parse_patterns
-from webinar_intel.pipeline import detect, learn
+from webinar_intel.core.vault import (
+    CompetitorContext,
+    parse_corrections,
+    parse_patterns,
+)
+from webinar_intel.pipeline import clean, detect, learn
 from webinar_intel.render import briefs_log
+from webinar_intel.render.markdown import render
 
 VAULT = Path(__file__).resolve().parents[1] / "context-vault"
 
@@ -134,6 +139,39 @@ def test_extract_json_with_prose() -> None:
 def test_extract_json_garbage_raises() -> None:
     with pytest.raises(ValueError):
         _extract_json("no json here at all")
+
+
+def test_parse_corrections() -> None:
+    md = "# C\n\n## Corrections\n\n- OASP => OWASP\n- Lamros => Lambros\n- not a pair\n"
+    assert parse_corrections(md) == [("OASP", "OWASP"), ("Lamros", "Lambros")]
+
+
+def test_apply_corrections_whole_word_case_insensitive() -> None:
+    t = _transcript(["the oasp top ten", "Rock Lamros speaking", "untouched line"])
+    fixed, count = clean.apply_corrections(t, [("OASP", "OWASP"), ("Lamros", "Lambros")])
+    assert count == 2
+    assert fixed.segments[0].text == "the OWASP top ten"
+    assert fixed.segments[1].text == "Rock Lambros speaking"
+    assert fixed.segments[2].text == "untouched line"
+    # original untouched
+    assert t.segments[0].text == "the oasp top ten"
+
+
+def test_apply_corrections_no_pairs_returns_same() -> None:
+    t = _transcript(["hello"])
+    fixed, count = clean.apply_corrections(t, [])
+    assert count == 0 and fixed is t
+
+
+def test_render_headings_by_mode() -> None:
+    t = _transcript(["x"])
+    b = _brief(t)
+    third = render(b)
+    assert "## Direct competitor mentions" in third
+    own = render(b.model_copy(update={"mode": "own"}))
+    assert "## Key positioning claims" in own
+    assert "## Swipes at us / other vendors" in own
+    assert "competitor-hosted" in own
 
 
 def test_vault_pattern_files_parse() -> None:

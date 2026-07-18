@@ -11,8 +11,14 @@ from dotenv import load_dotenv
 
 from webinar_intel.adapters import llm, youtube
 from webinar_intel.core.models import Brief, Transcript
-from webinar_intel.core.vault import CompetitorContext, UsContext, load_competitor, load_us
-from webinar_intel.pipeline import detect, learn
+from webinar_intel.core.vault import (
+    CompetitorContext,
+    UsContext,
+    load_competitor,
+    load_corrections,
+    load_us,
+)
+from webinar_intel.pipeline import clean, detect, learn
 from webinar_intel.render import briefs_log, gdocs
 from webinar_intel.render.markdown import render
 
@@ -20,6 +26,12 @@ from webinar_intel.render.markdown import render
 app = typer.Typer(add_completion=False, help="Analyze competitor webinars from YouTube.")
 
 VAULT_OPTION = typer.Option(Path("context-vault"), "--vault-dir")
+MODE_OPTION = typer.Option(
+    "auto",
+    "--mode",
+    help="Webinar mode: auto (detect from channel), own (competitor-hosted), "
+    "third-party (competitor merely mentioned)",
+)
 
 
 @app.callback()
@@ -64,6 +76,7 @@ def analyze(
     transcript_path: Path = typer.Argument(..., help="Path to transcripts/<video_id>.json"),
     vault_dir: Path = VAULT_OPTION,
     out_dir: Path = typer.Option(Path("briefs"), "--out-dir"),
+    mode: str = MODE_OPTION,
 ) -> None:
     """Analyze a previously fetched transcript (runs in CI)."""
     load_dotenv()
@@ -73,7 +86,7 @@ def analyze(
     transcript = Transcript.model_validate(payload["transcript"])
 
     us, comp = _load_vault(vault_dir, competitor)
-    result = _run_pipeline(transcript, us, comp, out_dir)
+    result = _run_pipeline(transcript, us, comp, out_dir, mode, vault_dir)
     _write_and_publish(result, competitor, out_dir)
     _record_learnings(result, comp)
 
@@ -89,6 +102,7 @@ def brief(
     ),
     vault_dir: Path = VAULT_OPTION,
     out_dir: Path = typer.Option(Path("briefs"), "--out-dir"),
+    mode: str = MODE_OPTION,
 ) -> None:
     """Fetch + analyze in one step (fully local mode)."""
     load_dotenv()
@@ -98,7 +112,7 @@ def brief(
     typer.echo(f"Fetching transcript for {url}...")
     transcript = youtube.fetch_transcript(url)
 
-    result = _run_pipeline(transcript, us, comp, out_dir)
+    result = _run_pipeline(transcript, us, comp, out_dir, mode, vault_dir)
     _write_and_publish(result, competitor, out_dir)
     _record_learnings(result, comp)
 
@@ -110,31 +124,71 @@ def _load_vault(vault_dir: Path, competitor: str) -> tuple[UsContext, Competitor
         raise typer.BadParameter(str(exc)) from exc
 
 
+def _resolve_mode(mode: str, transcript: Transcript, comp: CompetitorContext) -> str:
+    if mode in ("own", "third-party"):
+        return mode
+    channel = (transcript.metadata.channel or "").lower()
+    slug_words = comp.slug.lower().replace("-", " ")
+    if slug_words and slug_words in channel:
+        return "own"
+    return "third-party"
+
+
 def _run_pipeline(
-    transcript: Transcript, us: UsContext, comp: CompetitorContext, out_dir: Path
+    transcript: Transcript,
+    us: UsContext,
+    comp: CompetitorContext,
+    out_dir: Path,
+    mode: str = "auto",
+    vault_dir: Path = Path("context-vault"),
 ) -> Brief:
-    # Detect stage: pure Python, zero tokens.
-    detection = detect.find_candidates(transcript, us.patterns + comp.patterns)
-    typer.echo(
-        f"Detect stage: {detection.hit_count} hits in {detection.window_count} windows "
-        f"({detection.total_segments} segments total); "
-        f"terms: {', '.join(detection.matched_terms) or 'none'}"
-    )
-    if detection.candidates_text:
+    resolved = _resolve_mode(mode, transcript, comp)
+
+    # Clean stage: vault ASR corrections, pure Python, zero tokens.
+    corrections = load_corrections(vault_dir, comp.slug)
+    transcript, fixed = clean.apply_corrections(transcript, corrections)
+    if fixed:
+        typer.echo(f"Clean stage: applied {fixed} ASR corrections from the vault.")
+
+    if resolved == "own":
+        # Competitor-hosted webinar: everything they say is signal. A cheap
+        # full-transcript sweep extracts their competitive claims.
+        typer.echo(
+            f"Mode: own webinar (channel '{transcript.metadata.channel}' matches "
+            f"'{comp.slug}'). Extracting their claims with the fast model..."
+        )
+        claims = llm.extract_claims(transcript, comp)
+        typer.echo(f"Claims extracted: {len(claims)}")
+        candidates_text = "\n".join(f"- {c}" for c in claims)
+        candidates_label = f"Extracted claims ({len(claims)})"
+    else:
+        # Third-party webinar: keyword detect finds the competitor moments.
+        detection = detect.find_candidates(transcript, us.patterns + comp.patterns)
+        typer.echo(
+            f"Mode: third-party. Detect stage: {detection.hit_count} hits in "
+            f"{detection.window_count} windows ({detection.total_segments} segments "
+            f"total); terms: {', '.join(detection.matched_terms) or 'none'}"
+        )
+        candidates_text = detection.candidates_text
+        candidates_label = f"Matched terms: {', '.join(detection.matched_terms)}"
+        if not candidates_text:
+            typer.echo(
+                "No candidate windows found; judgment call will read the full transcript."
+            )
+
+    if candidates_text:
         candidates_dir = out_dir / "candidates"
         candidates_dir.mkdir(parents=True, exist_ok=True)
         candidates_path = candidates_dir / f"{transcript.metadata.video_id}.md"
         candidates_path.write_text(
-            f"# Candidate windows — {transcript.metadata.title}\n\n"
-            f"Matched terms: {', '.join(detection.matched_terms)}\n\n"
-            "```\n" + detection.candidates_text + "\n```\n"
+            f"# Candidate material — {transcript.metadata.title}\n\n"
+            f"{candidates_label}\n\n"
+            "```\n" + candidates_text + "\n```\n"
         )
         typer.echo(f"Wrote {candidates_path}")
-    else:
-        typer.echo("No candidate windows found; judgment call will read the full transcript.")
 
     typer.echo("Analyzing with Claude (coverage on fast model, judgment on smart model)...")
-    return llm.analyze(transcript, us, comp, detection.candidates_text)
+    return llm.analyze(transcript, us, comp, candidates_text, mode=resolved)
 
 
 def _record_learnings(result: Brief, comp: CompetitorContext) -> None:
