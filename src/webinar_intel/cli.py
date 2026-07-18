@@ -10,12 +10,16 @@ import typer
 from dotenv import load_dotenv
 
 from webinar_intel.adapters import llm, youtube
-from webinar_intel.core.models import Profile, Transcript
-from webinar_intel.render import gdocs
+from webinar_intel.core.models import Brief, Transcript
+from webinar_intel.core.vault import CompetitorContext, UsContext, load_competitor, load_us
+from webinar_intel.pipeline import detect, learn
+from webinar_intel.render import briefs_log, gdocs
 from webinar_intel.render.markdown import render
 
 
 app = typer.Typer(add_completion=False, help="Analyze competitor webinars from YouTube.")
+
+VAULT_OPTION = typer.Option(Path("context-vault"), "--vault-dir")
 
 
 @app.callback()
@@ -27,7 +31,10 @@ def main() -> None:
 def fetch(
     url: str = typer.Argument(..., help="YouTube URL or video ID"),
     competitor: str = typer.Option(
-        ..., "--competitor", "-c", help="Competitor profile slug (matches profiles/<slug>.md)"
+        ...,
+        "--competitor",
+        "-c",
+        help="Competitor slug (matches context-vault/competitors/<slug>/)",
     ),
     out_dir: Path = typer.Option(Path("transcripts"), "--out-dir"),
     push: bool = typer.Option(True, "--push/--no-push", help="git commit + push the transcript"),
@@ -49,13 +56,13 @@ def fetch(
             check=True,
         )
         subprocess.run(["git", "push"], check=True)
-        typer.echo("Pushed. GitHub Actions will analyze and update the Google Doc.")
+        typer.echo("Pushed. GitHub Actions will analyze and publish the brief.")
 
 
 @app.command()
 def analyze(
     transcript_path: Path = typer.Argument(..., help="Path to transcripts/<video_id>.json"),
-    profiles_dir: Path = typer.Option(Path("profiles"), "--profiles-dir"),
+    vault_dir: Path = VAULT_OPTION,
     out_dir: Path = typer.Option(Path("briefs"), "--out-dir"),
 ) -> None:
     """Analyze a previously fetched transcript (runs in CI)."""
@@ -65,40 +72,84 @@ def analyze(
     competitor = payload["competitor"]
     transcript = Transcript.model_validate(payload["transcript"])
 
-    us = _load_profile(profiles_dir / "us.md", "us")
-    comp = _load_profile(profiles_dir / f"{competitor}.md", competitor)
-
-    typer.echo("Analyzing with Claude...")
-    result = llm.analyze(transcript, us, comp)
-
+    us, comp = _load_vault(vault_dir, competitor)
+    result = _run_pipeline(transcript, us, comp, out_dir)
     _write_and_publish(result, competitor, out_dir)
+    _record_learnings(result, comp)
 
 
 @app.command()
 def brief(
     url: str = typer.Argument(..., help="YouTube URL or video ID"),
     competitor: str = typer.Option(
-        ..., "--competitor", "-c", help="Competitor profile slug (matches profiles/<slug>.md)"
+        ...,
+        "--competitor",
+        "-c",
+        help="Competitor slug (matches context-vault/competitors/<slug>/)",
     ),
-    profiles_dir: Path = typer.Option(Path("profiles"), "--profiles-dir"),
+    vault_dir: Path = VAULT_OPTION,
     out_dir: Path = typer.Option(Path("briefs"), "--out-dir"),
 ) -> None:
     """Fetch + analyze in one step (fully local mode)."""
     load_dotenv()
 
-    us = _load_profile(profiles_dir / "us.md", "us")
-    comp = _load_profile(profiles_dir / f"{competitor}.md", competitor)
+    us, comp = _load_vault(vault_dir, competitor)
 
     typer.echo(f"Fetching transcript for {url}...")
     transcript = youtube.fetch_transcript(url)
 
-    typer.echo("Analyzing with Claude...")
-    result = llm.analyze(transcript, us, comp)
-
+    result = _run_pipeline(transcript, us, comp, out_dir)
     _write_and_publish(result, competitor, out_dir)
+    _record_learnings(result, comp)
 
 
-def _write_and_publish(result, competitor: str, out_dir: Path) -> None:
+def _load_vault(vault_dir: Path, competitor: str) -> tuple[UsContext, CompetitorContext]:
+    try:
+        return load_us(vault_dir), load_competitor(vault_dir, competitor)
+    except FileNotFoundError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
+def _run_pipeline(
+    transcript: Transcript, us: UsContext, comp: CompetitorContext, out_dir: Path
+) -> Brief:
+    # Detect stage: pure Python, zero tokens.
+    detection = detect.find_candidates(transcript, us.patterns + comp.patterns)
+    typer.echo(
+        f"Detect stage: {detection.hit_count} hits in {detection.window_count} windows "
+        f"({detection.total_segments} segments total); "
+        f"terms: {', '.join(detection.matched_terms) or 'none'}"
+    )
+    if detection.candidates_text:
+        candidates_dir = out_dir / "candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+        candidates_path = candidates_dir / f"{transcript.metadata.video_id}.md"
+        candidates_path.write_text(
+            f"# Candidate windows — {transcript.metadata.title}\n\n"
+            f"Matched terms: {', '.join(detection.matched_terms)}\n\n"
+            "```\n" + detection.candidates_text + "\n```\n"
+        )
+        typer.echo(f"Wrote {candidates_path}")
+    else:
+        typer.echo("No candidate windows found; judgment call will read the full transcript.")
+
+    typer.echo("Analyzing with Claude (coverage on fast model, judgment on smart model)...")
+    return llm.analyze(transcript, us, comp, detection.candidates_text)
+
+
+def _record_learnings(result: Brief, comp: CompetitorContext) -> None:
+    typer.echo("Extracting learnings for the vault...")
+    try:
+        learnings = llm.extract_learnings(result, comp)
+    except Exception as exc:  # noqa: BLE001 - learning must never fail the run
+        typer.echo(f"Skipped vault learning (non-fatal): {exc}")
+        return
+    touched = learn.record_learnings(comp, learnings, result)
+    for path in touched:
+        typer.echo(f"Updated {path}")
+
+
+def _write_and_publish(result: Brief, competitor: str, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     slug = _slug(result.metadata.title or result.metadata.video_id)
     out_path = out_dir / f"{competitor}-{slug}.md"
@@ -106,19 +157,16 @@ def _write_and_publish(result, competitor: str, out_dir: Path) -> None:
     out_path.write_text(body)
     typer.echo(f"Wrote {out_path}")
 
+    title = result.metadata.title or result.metadata.video_id
+    briefs_log.prepend(Path("BRIEFS.md"), body, competitor, title)
+    typer.echo("Updated BRIEFS.md")
+
     doc_id = os.environ.get("BRIEF_DOC_ID")
     if doc_id and os.environ.get("GOOGLE_SA_JSON"):
-        title = result.metadata.title or result.metadata.video_id
         gdocs.append_brief(doc_id, title, result.metadata.url, body)
         typer.echo(f"Appended to Google Doc {doc_id}")
     else:
-        typer.echo("Skipped Google Doc append (BRIEF_DOC_ID or GOOGLE_SA_JSON not set)")
-
-
-def _load_profile(path: Path, name: str) -> Profile:
-    if not path.exists():
-        raise typer.BadParameter(f"Profile not found: {path}")
-    return Profile(name=name, body=path.read_text())
+        typer.echo("Google Docs delivery not configured; skipping (markdown outputs written).")
 
 
 def _slug(text: str) -> str:
