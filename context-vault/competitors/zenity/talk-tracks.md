@@ -38,4 +38,6 @@ Zenity is a fine tool if a customer's agent footprint is 100% inside Microsoft 3
 
 <!-- The pipeline appends new recurring claims, phrases, and themes here after each analyzed webinar. Curate freely: this file is an edit surface. -->
 
-*No webinar learnings recorded yet.*
+
+- (2026-07-18, [AMA: Inside the OWASP State of Agentic AI Security & Governance](https://www.youtube.com/watch?v=jK1Z7Z6zlW0)) Zenity positioning around 'AI standards and governance' as thought leadership authority (OWASP GenAI Security Project core team membership)
+- (2026-07-18, [AMA: Inside the OWASP State of Agentic AI Security & Governance](https://www.youtube.com/watch?v=jK1Z7Z6zlW0)) Agentic AI security framed as standards/compliance governance play rather than runtime behavior detection

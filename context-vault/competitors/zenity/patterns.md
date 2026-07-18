@@ -51,3 +51,6 @@ recurring phrasings are discovered in webinars.
 ## Learned patterns
 
 <!-- New veiled phrasings discovered in webinars get appended here by the pipeline. -->
+- AI standards and governance
+- agentic AI security
+- OWASP GenAI security
