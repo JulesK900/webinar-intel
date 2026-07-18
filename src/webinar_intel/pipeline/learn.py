@@ -88,9 +88,7 @@ def record_learnings(
     )
     history = competitor.history_path.read_text()
     if HISTORY_MARKER in history:
-        history = history.replace(
-            HISTORY_MARKER, f"{HISTORY_MARKER}\n{history_line}", 1
-        )
+        history = history.replace(HISTORY_MARKER, f"{HISTORY_MARKER}\n{history_line}", 1)
     else:
         history = history.rstrip() + "\n" + history_line + "\n"
     competitor.history_path.write_text(history)

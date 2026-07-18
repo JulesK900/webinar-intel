@@ -83,9 +83,7 @@ def load_us(vault_dir: Path) -> UsContext:
 def load_competitor(vault_dir: Path, slug: str) -> CompetitorContext:
     comp = vault_dir / "competitors" / slug
     if not comp.is_dir():
-        available = sorted(
-            p.name for p in (vault_dir / "competitors").glob("*") if p.is_dir()
-        )
+        available = sorted(p.name for p in (vault_dir / "competitors").glob("*") if p.is_dir())
         raise FileNotFoundError(
             f"No competitor vault at {comp}. Available: {', '.join(available) or 'none'}"
         )

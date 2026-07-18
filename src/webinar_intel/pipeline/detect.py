@@ -38,9 +38,7 @@ def _stamp(seconds: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
 
-def find_candidates(
-    transcript: Transcript, terms: list[str], context: int = 2
-) -> DetectionResult:
+def find_candidates(transcript: Transcript, terms: list[str], context: int = 2) -> DetectionResult:
     """Return timestamped candidate windows around every term hit.
 
     Each hit segment is expanded by ``context`` segments on both sides;
@@ -59,9 +57,7 @@ def find_candidates(
                 matched.setdefault(original)
 
     if not hits:
-        return DetectionResult(
-            candidates_text="", total_segments=len(segments)
-        )
+        return DetectionResult(candidates_text="", total_segments=len(segments))
 
     # Build [start, end] windows and merge overlaps.
     windows: list[list[int]] = []
@@ -74,10 +70,7 @@ def find_candidates(
 
     blocks: list[str] = []
     for start, end in windows:
-        lines = [
-            f"[{_stamp(seg.start_seconds)}] {seg.text}"
-            for seg in segments[start : end + 1]
-        ]
+        lines = [f"[{_stamp(seg.start_seconds)}] {seg.text}" for seg in segments[start : end + 1]]
         blocks.append("\n".join(lines))
 
     return DetectionResult(

@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from webinar_intel.adapters.llm import _extract_json
 from webinar_intel.core.models import Brief, Transcript, TranscriptSegment, VideoMetadata
 from webinar_intel.core.vault import CompetitorContext, parse_patterns
 from webinar_intel.pipeline import detect, learn
@@ -17,9 +20,7 @@ def _transcript(texts: list[str]) -> Transcript:
         metadata=VideoMetadata(
             video_id="vid1", title="Test Webinar", channel="chan", url="https://youtu.be/vid1"
         ),
-        segments=[
-            TranscriptSegment(start_seconds=i * 10, text=t) for i, t in enumerate(texts)
-        ],
+        segments=[TranscriptSegment(start_seconds=i * 10, text=t) for i, t in enumerate(texts)],
     )
 
 
@@ -117,11 +118,27 @@ def test_record_learnings_appends_without_duplicates(tmp_path: Path) -> None:
     assert "1 direct" in hist.read_text()
 
 
+def test_extract_json_plain() -> None:
+    assert _extract_json('{"a": 1}') == {"a": 1}
+
+
+def test_extract_json_fenced() -> None:
+    assert _extract_json('```json\n{"a": 1}\n```') == {"a": 1}
+    assert _extract_json('```\n{"a": 1}\n```') == {"a": 1}
+
+
+def test_extract_json_with_prose() -> None:
+    assert _extract_json('Here is the result:\n{"a": 1}\nHope that helps!') == {"a": 1}
+
+
+def test_extract_json_garbage_raises() -> None:
+    with pytest.raises(ValueError):
+        _extract_json("no json here at all")
+
+
 def test_vault_pattern_files_parse() -> None:
     us_terms = parse_patterns((VAULT / "us" / "patterns.md").read_text())
-    zen_terms = parse_patterns(
-        (VAULT / "competitors" / "zenity" / "patterns.md").read_text()
-    )
+    zen_terms = parse_patterns((VAULT / "competitors" / "zenity" / "patterns.md").read_text())
     assert len(us_terms) > 10
     assert len(zen_terms) > 20
     assert "Zenity" in zen_terms

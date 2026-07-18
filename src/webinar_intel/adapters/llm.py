@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+from json import JSONDecodeError
 
 from anthropic import Anthropic
 from anthropic.types import TextBlock
@@ -109,6 +110,29 @@ Return a JSON object with exactly these keys:
 Be strict: prefer empty lists over noise. Return ONLY the JSON object."""
 
 
+def _extract_json(text: str) -> dict:
+    """Parse a JSON object from model output, tolerating code fences and prose.
+
+    Fast models often wrap JSON in ```json fences even when told not to;
+    fall back to the outermost {...} span before giving up.
+    """
+    candidate = text.strip()
+    if candidate.startswith("```"):
+        candidate = candidate.split("\n", 1)[1] if "\n" in candidate else ""
+        if candidate.rstrip().endswith("```"):
+            candidate = candidate.rstrip()[:-3]
+    try:
+        return json.loads(candidate)
+    except JSONDecodeError:
+        start, end = text.find("{"), text.rfind("}")
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start : end + 1])
+            except JSONDecodeError:
+                pass
+    raise ValueError(f"Model returned non-JSON output: {text[:200]}")
+
+
 def _ask_json(model: str, prompt: str, max_tokens: int = 4096) -> dict:
     client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     resp = client.messages.create(
@@ -116,13 +140,8 @@ def _ask_json(model: str, prompt: str, max_tokens: int = 4096) -> dict:
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
-    text = "".join(
-        block.text for block in resp.content if isinstance(block, TextBlock)
-    )
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Model returned non-JSON output: {text[:200]}") from exc
+    text = "".join(block.text for block in resp.content if isinstance(block, TextBlock))
+    return _extract_json(text)
 
 
 def analyze_coverage(transcript: Transcript) -> dict:
@@ -131,9 +150,7 @@ def analyze_coverage(transcript: Transcript) -> dict:
     return _ask_json(FAST_MODEL, prompt, max_tokens=2048)
 
 
-def analyze_competitive(
-    candidates_text: str, us: UsContext, competitor: CompetitorContext
-) -> dict:
+def analyze_competitive(candidates_text: str, us: UsContext, competitor: CompetitorContext) -> dict:
     """SMART model: competitive judgment over candidate windows only."""
     prompt = COMPETITIVE_PROMPT.format(
         messaging=us.messaging,
