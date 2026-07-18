@@ -57,3 +57,12 @@ recurring phrasings are discovered in webinars.
 - director of AI standards
 - OWASP GenAI security project
 - core team
+- delivery truck
+- poisoning what the agent trusts
+- shadow AI completely ungoverned
+- dependency graph assembles itself live
+- discover tools load skills spawn sub agents
+- semi-autonomous frameworks
+- fastest moving attack surface
+- total rebuild
+- maturity model
