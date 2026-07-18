@@ -54,3 +54,6 @@ recurring phrasings are discovered in webinars.
 - AI standards and governance
 - agentic AI security
 - OWASP GenAI security
+- director of AI standards
+- OWASP GenAI security project
+- core team
